@@ -1,7 +1,6 @@
 import mysql.connector
 
 #connect to database server
-
 mydb = mysql.connector.connect(
 	host = 'dbclass',
 	user = 'yxiao',
@@ -11,7 +10,28 @@ mydb = mysql.connector.connect(
 #create database cursor
 mycursor = mydb.cursor()
 
-#create tables
+#delete existing tables in current database
+##reference link1: https://blog.csdn.net/hang916/article/details/79461693
+##reference link2: https://blog.csdn.net/qq_30715329/article/details/79702731
+sql = 'select concat(%s, table_name, %s)\
+	from information_schema.tables\
+	where table_schema= %s;'
+val = ('drop table if exists ', ';', mydb.database)
+mycursor.execute(sql,val)
+myresult = mycursor.fetchall()
+
+#close globle foreign_key_checks
+mycursor.execute('set @@foreign_key_checks=0;')
+for x in myresult:
+	mycursor.execute(x[0])
+
+#open globle foreign_key_checks
+mycursor.execute('set @@foreign_key_checks=1;')
+
+'''
+-----create tables-----
+
+'''
 mycursor.execute('\
 create table Video(\
 	videoCode int,\
@@ -30,26 +50,26 @@ create table Model(\
 	primary key(modelNo));\
 	')
 
-mycursor.execute('\
-create table Site(\
+sql = 'create table Site(\
 	siteCode int,\
 	type varchar(16),\
 	address varchar(100),\
 	phone varchar(16),\
 	primary key(siteCode),\
-	check(type in ('bar', 'restaurant')));\
-	')
+	check( type in (%s,%s)));'
+val = ('bar','restaurant')
+mycursor.execute(sql,val)
 
-mycursor.execute('\
-create table DigitalDisplay(\
+sql = 'create table DigitalDisplay(\
 	serialNo char(10),\
 	schedulerSystem char(10),\
 	modelNo char(10),\
 	primary key(serialNo),\
 	foreign key(modelNo) references Model(modelNo)\
 	on delete set null on update cascade,\
-	check(schedulerSystem in ('Random', 'Smart', 'Virtue')));\
-	')
+	check(schedulerSystem in (%s,%s,%s)));'
+val = ('Random', 'Smart', 'Virtue')	
+mycursor.execute(sql,val)
 
 mycursor.execute('\
 create table Client(\
@@ -84,8 +104,8 @@ create table Salesman(\
 	primary key(empId));\
 	')
 
-mycursor.execute('\
-create table AirtimePackage(\
+
+sql = 'create table AirtimePackage(\
 	packageId int,\
 	class varchar(16),\
 	startDate date,\
@@ -93,8 +113,9 @@ create table AirtimePackage(\
 	frequency int,\
 	videoCode int,\
 	primary key(packageId),\
-	check(class in ('economy', 'whole day', 'golden hours')));\
-	')
+	check(class in (%s,%s,%s)));'
+val = ('economy', 'whole day', 'golden hours')
+mycursor.execute(sql,val)
 
 mycursor.execute('\
 create table AdmWorkHours(\
@@ -165,22 +186,26 @@ create table Locates(\
 	on delete cascade on update cascade);\
 	')
 
-# insert data into tables
+
+'''
+-----insert data into tables-----
+
+'''
 sql = 'INSERT INTO Video(videoCode, videoLength) VALUES (%s, %s);'
 val = [
 	('1', '30'), ('2', '60'), ('3', '90')
 	]
 mycursor.executemany(sql, val)
-mbdb.commit()
+#mydb.commit()
 
-sql = 'INSERT INTO Model(modelNo, width, height, weight, depth, screenSize) VALUES (%s，%s, %s，%s,%s,%s);'
+sql = 'INSERT INTO Model(modelNo, width, height, weight, depth, screenSize) VALUES (%s,%s,%s,%s,%s,%s);'
 val = [
 	('LGXXXXXXX1', 50, 30, 50, 12, 60),
 	('LGXXXXXXX2', 60, 35, 60, 13, 70),
 	('LGXXXXXXX3', 70, 40, 70, 14, 80)
 	]
 mycursor.executemany(sql, val)
-mbdb.commit()
+#mydb.commit()
 
 sql = 'insert into Site(siteCode, type, address, phone)	values	(%s, %s, %s, %s);'
 val = [
@@ -189,7 +214,7 @@ val = [
 	(3, 'bar', '301 S Espina St', '5756213333')
 	]
 mycursor.executemany(sql, val)
-mbdb.commit()
+mydb.commit()
 
 sql = 'insert into	DigitalDisplay(serialNo, schedulerSystem, modelNo)	values	(%s, %s, %s);'
 val = [
@@ -198,16 +223,16 @@ val = [
 	('SNXXXXXXX3', 'Virtue', 'LGXXXXXXX3')
 	]
 mycursor.executemany(sql, val)
-mbdb.commit()
+mydb.commit()
 
-sql = 'Client(clientId, name, phone, address)	values	(%s, %s, %s, %s);'
+sql = 'insert into Client(clientId, name, phone, address)	values	(%s, %s, %s, %s);'
 val = [
-	(1, 'client1', 'cliphone1', 'cliaddr1'),
-	(2, 'client2', 'cliphone2', 'cliaddr2'),
-	(3, 'client3', 'cliphone3', 'cliaddr3')
+	(1, 'client1', '5751111111', 'cliaddr1'),
+	(2, 'client2', '5751111112', 'cliaddr2'),
+	(3, 'client3', '5751111113', 'cliaddr3')
 	]
 mycursor.executemany(sql, val)
-mbdb.commit()
+mydb.commit()
 
 sql = 'insert into TechnicalSupport(empId, name, gender) values (%s, %s, %s);'
 val = [
@@ -216,7 +241,7 @@ val = [
 	(33, 'tech3', 'm')
 	]
 mycursor.executemany(sql, val)
-mbdb.commit()
+mydb.commit()
 
 sql = 'insert into	Administrator(empId, name, gender)	values	(%s, %s, %s);'
 val = [
@@ -225,7 +250,7 @@ val = [
 	(3, 'admin3', 'm')
 	]
 mycursor.executemany(sql, val)
-mbdb.commit()
+mydb.commit()
 
 sql = 'insert into	Salesman(empId, name, gender)	values	(%s, %s, %s);'
 val = [
@@ -235,7 +260,7 @@ val = [
 	(4, 'Mary', 'f')
 	]
 mycursor.executemany(sql, val)
-mbdb.commit()
+mydb.commit()
 
 sql = 'insert into	AirtimePackage(packageId, class, startDate, lastDate, frequency, videoCode)	values\
 	(%s, %s, %s, %s, %s, %s);'
@@ -245,30 +270,36 @@ val = [
 	(3, 'golden hours', '2020-03-01', '2020-04-01', 3, 3)
 	]
 mycursor.executemany(sql, val)
-mbdb.commit()
+mydb.commit()
 
 sql = 'insert into	AdmWorkHours(empId, day, hours)	values	(%s, %s, %s);'
 val = [
 	(1, '2020-01-01', 6),
+	(2, '2020-01-01', 7),
+	(3, '2020-01-01', 6),
+	(1, '2020-01-02', 8),
 	(2, '2020-01-02', 7),
+	(3, '2020-01-02', 6),
+	(1, '2020-01-03', 7),
+	(2, '2020-01-03', 5),
 	(3, '2020-01-03', 8)
 	]
 mycursor.executemany(sql, val)
-mbdb.commit()
+mydb.commit()
 
 sql = 'insert into	Broadcasts(videoCode, siteCode)	values	(%s, %s);'
 val = [
 	('1', '1'), ('2', '2'), ('3', '3')
 	]
 mycursor.executemany(sql, val)
-mbdb.commit()
+mydb.commit()
 
 sql = 'insert into	Administers(empId, siteCode)	values	(%s, %s);'
 val = [
 	('1', 1), ('2', 2), ('3', 3)
 	]
 mycursor.executemany(sql, val)
-mbdb.commit()
+mydb.commit()
 
 sql = 'insert into	Specializes(empId, modelNo)	values	(%s, %s);'
 val = [
@@ -277,16 +308,22 @@ val = [
 	(33, 'LGXXXXXXX3')
 	]
 mycursor.executemany(sql, val)
-mbdb.commit()
+mydb.commit()
 
-sql = 'insert into	Purchases(clientId, empId, packageId, commissionRate)	values	(%s, %s, %s, %s);'
+sql = 'insert into Purchases(clientId, empId, packageId, commissionRate) values	(%s, %s, %s, %s);'
 val = [
-	('1', 111, 1, 7),
-	('2', 222, 2, 8),
-	('3', 333, 3, 9)
+	('1', 1, 1, 7),
+	('1', 2, 1, 8),
+	('1', 3, 1, 8),
+	('2', 1, 2, 8),
+	('2', 2, 2, 8),
+	('2', 3, 2, 8),
+	('3', 1, 3, 8),
+	('3', 2, 3, 7),
+	('3', 3, 3, 9)
 	]
 mycursor.executemany(sql, val)
-mbdb.commit()
+mydb.commit()
 
 sql = 'insert into	Locates(serialNo, siteCode)	values	(%s, %s);'
 val = [
@@ -295,7 +332,116 @@ val = [
 	('SNXXXXXXX3', 3)
 	]
 mycursor.executemany(sql, val)
-mbdb.commit()
+mydb.commit()
 
-#main function
+'''
+-----main function-----
+
+'''
+def main():
+	import argparse
+	ap = argparse.ArgumentParser(description='database queries.')
+	ap.add_argument('-QN','--QuestionNumber',help = 'the sequence number of each specific question.')
+	ap.add_argument('-EI','--ExtraInformation',help='the second parameter for some particular questions.')
+	args = vars(ap.parse_args())
+	#args = {'QuestionNumber': '3', 'ExtraInformation':'LGXXXXXXX2'}
+	
+	if args['QuestionNumber'] == '1':
+		sql = 'select * \
+				from Site\
+				where address like "%s";' % ('%'+args['ExtraInformation']+'%')
+		#sel = args['ExtraInformation']
+		#sql = 'SELECT * FROM Site WHERE address LIKE "%s";' % ('%%%s%%' % sel)
+		mycursor.execute(sql)
+		myresult = mycursor.fetchall()
+
+		for x in myresult:
+			print(x)	
+
+	elif args['QuestionNumber'] == '2':
+		sql = 'select D.serialNo,D.modelNo, S.empId\
+				from DigitalDisplay as D, Specializes as S\
+				where S.modelNo = D.modelNo and D.schedulerSystem = "%s";'\
+				 % (args['ExtraInformation']) 
+		mycursor.execute(sql)
+		myresult = mycursor.fetchall()
+
+		for x in myresult:
+			print(x)	
+
+	elif args['QuestionNumber'] == '3':
+		sql = 'select name, count(empId)\
+				from Salesman\
+				group by name;'
+		mycursor.execute(sql)
+		myresult = mycursor.fetchall()
+
+		#formated output
+		
+		print('{0:<20s}{1:>5s}'.format('Name','cnt'))
+		print('{0:-<20}'.format('-'))
+		for x in myresult:
+			print('{0:<20s}{1:>5d}'.format(x[0],x[1]))
+
+	elif args['QuestionNumber'] == '4':
+		sql = 'select *\
+				from Client\
+				where phone = "%s";'\
+				 % (args['ExtraInformation'])
+		mycursor.execute(sql)
+		myresult = mycursor.fetchall()
+		for x in myresult:
+			print(x)
+
+
+	elif args['QuestionNumber'] == '5':
+		sql = 'select AH.empId, A.name, sum(AH.hours)\
+				from AdmWorkHours as AH, Administrator as A\
+				where AH.empId = A.empId\
+				group by AH.empId\
+				order by sum(AH.hours) asc;'
+		mycursor.execute(sql)
+		myresult = mycursor.fetchall()
+		for x in myresult:
+			print(x)
+
+
+	elif args['QuestionNumber'] == '6':
+		sql = 'select T.name \
+				from Specializes as S, TechnicalSupport as T\
+				where S.empId = T.empId and S.modelNo = "%s"'\
+				 % (args['ExtraInformation'])
+		mycursor.execute(sql)
+		myresult = mycursor.fetchall()
+		for x in myresult:
+			print(x)
+
+
+	elif args['QuestionNumber'] == '7':
+		sql = 'with empId_avg_CR(empId,avg_CR) as\
+				(select empId, avg(commissionRate) as avg_CR\
+				 from Purchases\
+				 group by empId)\
+				select S.name, E.avg_CR\
+				from Salesman S, empId_avg_CR E\
+				where E.empId = S.empId\
+				order by avg_CR desc;'
+		mycursor.execute(sql)
+		myresult = mycursor.fetchall()
+		for x in myresult:
+			print(x)
+	else:
+		print('{0:20s}{1:>5s}'.format('Role','cnt'))
+		print('{0:-<20}'.format('-'))
+		roles = ['Administrator','Salesman','TechnicalSupport']
+		for i in range(len(roles)):
+			sql = 'select count(empId)\
+				from %s' % (roles[i])
+			mycursor.execute(sql)
+			myresult = mycursor.fetchall()
+			for x in myresult:
+				print('{0:20s}{1:>5d}'.format(roles[i],x[0]))
+
+if __name__ == '__main__':
+	main()
 
